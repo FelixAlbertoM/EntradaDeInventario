@@ -1,11 +1,12 @@
-﻿using EntradaDeInventario.Models;
+﻿using EntradaDeInventario.Data;
+using EntradaDeInventario.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace EntradaDeInventario.DAL
 {
-    public class Contexto : IdentityDbContext<IdentityUser>
+    public class Contexto : IdentityDbContext<ApplicationUser>
     {
         public Contexto(DbContextOptions<Contexto> options) : base(options) { }
 
