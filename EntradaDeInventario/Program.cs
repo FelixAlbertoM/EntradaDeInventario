@@ -2,6 +2,7 @@ using EntradaDeInventario.Components;
 using EntradaDeInventario.Components.Account;
 using EntradaDeInventario.DAL;
 using EntradaDeInventario.Data;
+using EntradaDeInventario.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -25,14 +26,24 @@ builder.Services.AddAuthentication(options =>
 
 var connectionString = builder.Configuration.GetConnectionString("SqlConStr") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContext<Contexto>(options =>
+builder.Services.AddScoped<ProductosService>();
+builder.Services.AddScoped<EntradasService>();
+
+builder.Services.AddDbContextFactory<Contexto>(options =>
     options.UseSqlServer(connectionString));
+
+
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
-        options.SignIn.RequireConfirmedAccount = true;
-        options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
+        options.SignIn.RequireConfirmedAccount = false;
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredLength = 6;
     })
     .AddEntityFrameworkStores<Contexto>()
     .AddSignInManager()
