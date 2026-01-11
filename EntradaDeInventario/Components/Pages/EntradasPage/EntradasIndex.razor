@@ -1,0 +1,172 @@
+﻿@page "/Entradas/Index"
+@using EntradaDeInventario.Models
+@using EntradaDeInventario.Services
+@using Microsoft.AspNetCore.Authorization
+@inject EntradasService entradasService
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageTitle>Consulta de Entradas de Inventario</PageTitle>
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header text-center bg-white">
+            <h5 class="mb-0">Consulta de Entradas de Inventario</h5>
+        </div>
+        <div class="card-body">
+
+            <div class="row align-items-end mb-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Desde:</label>
+                    <InputDate class="form-control" @bind-Value="FechaDesde" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Hasta:</label>
+                    <InputDate class="form-control" @bind-Value="FechaHasta" />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Filtrar por:</label>
+                    <InputSelect class="form-select" @bind-Value="Filtro">
+                        <option value="Id">EntradaId</option>
+                        <option value="Concepto">Concepto</option>
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Búsqueda:</label>
+                    <div class="input-group">
+                        <input class="form-control" @bind="ValorFiltro" placeholder="Buscar..." />
+                        <button type="button" class="btn btn-primary" @onclick="Buscar">
+                            <i class="bi bi-search me-1"></i>Buscar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-md-3 text-end">
+                    <a href="/Entradas/Create" class="btn btn-success">
+                        <i class="bi bi-plus-circle me-1"></i> Crear
+                    </a>
+                </div>
+            </div>
+
+            <table class="table table-bordered text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th>Id</th>
+                        <th>Fecha</th>
+                        <th>Concepto</th>
+                        <th>Total</th>
+                        <th>Editar</th>
+                        <th>Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in ListaEntradas)
+                    {
+                        <tr>
+                            <td>@e.EntradaId</td>
+                            <td>@e.Fecha.ToShortDateString()</td>
+                            <td>@e.Concepto</td>
+                            <td>@e.Total.ToString("C2")</td>
+                            <td>
+                                <a href="/Entradas/Edit/@e.EntradaId" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => MostrarModalEliminar(e)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="d-flex justify-content-between mt-3">
+                <strong>Total Registros:</strong> @ListaEntradas.Count
+                <strong>Total General:</strong> @ListaEntradas.Sum(e => e.Total).ToString("C2")
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (EsVisibleModalEliminar && EntradaSeleccionada != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => EsVisibleModalEliminar = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro de eliminar esta entrada?</p>
+                    <p><strong>Nota:</strong> Se revertirán las existencias de los productos asociados.</p>
+                    <ul>
+                        <li><strong>ID:</strong> @EntradaSeleccionada.EntradaId</li>
+                        <li><strong>Concepto:</strong> @EntradaSeleccionada.Concepto</li>
+                        <li><strong>Total:</strong> @EntradaSeleccionada.Total.ToString("C2")</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => EsVisibleModalEliminar = false">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="EliminarEntrada">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Entradas> ListaEntradas { get; set; } = new();
+    private bool EsVisibleModalEliminar = false;
+    private Entradas? EntradaSeleccionada;
+
+    private string Filtro { get; set; } = "Id";
+    private string ValorFiltro { get; set; } = string.Empty;
+    private DateTime? FechaDesde { get; set; }
+    private DateTime? FechaHasta { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaEntradas = await entradasService.Listar(e => true);
+    }
+
+    private async Task Buscar()
+    {
+        var lista = await entradasService.Listar(e => true);
+
+        if (!string.IsNullOrWhiteSpace(ValorFiltro))
+        {
+            if (Filtro == "Id" && int.TryParse(ValorFiltro, out int id))
+                lista = lista.Where(e => e.EntradaId == id).ToList();
+            else if (Filtro == "Concepto")
+                lista = lista.Where(e => e.Concepto != null &&
+                          e.Concepto.Contains(ValorFiltro, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        if (FechaDesde != null)
+            lista = lista.Where(e => e.Fecha.Date >= FechaDesde.Value.Date).ToList();
+        if (FechaHasta != null)
+            lista = lista.Where(e => e.Fecha.Date <= FechaHasta.Value.Date).ToList();
+
+        ListaEntradas = lista;
+    }
+
+    private void MostrarModalEliminar(Entradas entrada)
+    {
+        EntradaSeleccionada = entrada;
+        EsVisibleModalEliminar = true;
+    }
+
+    private async Task EliminarEntrada()
+    {
+        if (EntradaSeleccionada != null && await entradasService.Eliminar(EntradaSeleccionada.EntradaId))
+        {
+            EsVisibleModalEliminar = false;
+            ListaEntradas = await entradasService.Listar(e => true);
+        }
+    }
+}
