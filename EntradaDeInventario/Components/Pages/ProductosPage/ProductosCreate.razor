@@ -1,0 +1,85 @@
+﻿@page "/Productos/Create"
+@using BlazorBootstrap
+@using EntradaDeInventario.Models
+@using EntradaDeInventario.Services
+@using EntradaDeInventario.Extensors
+@using Microsoft.AspNetCore.Authorization
+@inject ProductosService productosService
+@inject ToastService ToastService
+@inject NavigationManager navigationManager
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageTitle>Registrar Producto</PageTitle>
+
+<div class="container mt-4">
+    <div class="card shadow-lg">
+        <div class="card-header bg-light text-center">
+            <h4 class="fw-bold mb-0">Registro de Producto</h4>
+        </div>
+
+        <EditForm Model="producto" OnValidSubmit="Guardar">
+            <DataAnnotationsValidator />
+
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descripción:</label>
+                    <InputText class="form-control" @bind-Value="producto.Descripcion" />
+                    <ValidationMessage For="@(() => producto.Descripcion)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Costo:</label>
+                    <InputNumber class="form-control" @bind-Value="producto.Costo" />
+                    <ValidationMessage For="@(() => producto.Costo)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Precio:</label>
+                    <InputNumber class="form-control" @bind-Value="producto.Precio" />
+                    <ValidationMessage For="@(() => producto.Precio)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Existencia:</label>
+                    <input class="form-control bg-light text-secondary" value="@producto.Existencia" readonly />
+                    <small class="text-muted">La existencia se actualiza automáticamente con las entradas.</small>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(mensajeError))
+                {
+                    <div class="alert alert-danger mt-3">@mensajeError</div>
+                }
+            </div>
+
+            <div class="card-footer text-center">
+                <a href="/Productos/Index" class="btn btn-secondary me-2">
+                    <span class="bi bi-arrow-left"></span> Volver
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <span class="bi bi-save"></span> Guardar
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private string mensajeError = string.Empty;
+    private Productos producto = new Productos();
+
+    private async Task Guardar()
+    {
+        var creado = await productosService.Guardar(producto);
+
+        if (creado)
+        {
+            ToastService.ShowSuccess("Producto guardado correctamente");
+            navigationManager.NavigateTo("/Productos/Index");
+        }
+        else
+        {
+            mensajeError = "No se pudo registrar el producto correctamente.";
+        }
+    }
+}

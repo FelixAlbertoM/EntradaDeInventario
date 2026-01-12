@@ -6,6 +6,7 @@ using EntradaDeInventario.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Blazored.Toast;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,9 @@ var connectionString = builder.Configuration.GetConnectionString("SqlConStr") ??
 
 builder.Services.AddScoped<ProductosService>();
 builder.Services.AddScoped<EntradasService>();
+
+builder.Services.AddBlazorBootstrap();
+builder.Services.AddBlazoredToast();
 
 builder.Services.AddDbContextFactory<Contexto>(options =>
     options.UseSqlServer(connectionString));

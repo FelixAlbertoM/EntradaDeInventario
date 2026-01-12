@@ -1,0 +1,170 @@
+﻿@page "/Productos/Index"
+@using EntradaDeInventario.Models
+@using EntradaDeInventario.Services
+@using Microsoft.AspNetCore.Authorization
+@inject ProductosService productosService
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageTitle>Consulta de Productos</PageTitle>
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header text-center bg-white">
+            <h5 class="mb-0">Consulta de Productos</h5>
+        </div>
+        <div class="card-body">
+
+            <div class="row align-items-end mb-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Filtrar por:</label>
+                    <InputSelect class="form-select" @bind-Value="Filtro">
+                        <option value="Id">ProductoId</option>
+                        <option value="Descripcion">Descripción</option>
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-5">
+                    <label class="form-label fw-bold">Búsqueda:</label>
+                    <div class="input-group">
+                        <input class="form-control" @bind="ValorFiltro" placeholder="Buscar..." />
+                        <button type="button" class="btn btn-primary" @onclick="Buscar">
+                            <i class="bi bi-search me-1"></i>Buscar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-md-4 text-end">
+                    <a href="/Productos/Create" class="btn btn-success">
+                        <i class="bi bi-plus-circle me-1"></i> Crear
+                    </a>
+                </div>
+            </div>
+
+            <table class="table table-bordered text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th>Id</th>
+                        <th>Descripción</th>
+                        <th>Costo</th>
+                        <th>Precio</th>
+                        <th>Existencia</th>
+                        <th>Editar</th>
+                        <th>Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in ListaProductos)
+                    {
+                        <tr>
+                            <td>@p.ProductoId</td>
+                            <td>@p.Descripcion</td>
+                            <td>@p.Costo.ToString("C2")</td>
+                            <td>@p.Precio.ToString("C2")</td>
+                            <td>@p.Existencia</td>
+                            <td>
+                                <a href="/Productos/Edit/@p.ProductoId" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => MostrarModalEliminar(p)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="d-flex justify-content-between mt-3">
+                <strong>Total Registros:</strong> @ListaProductos.Count
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (EsVisibleModalEliminar && ProductoSeleccionado != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => EsVisibleModalEliminar = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro de eliminar este producto?</p>
+                    <ul>
+                        <li><strong>ID:</strong> @ProductoSeleccionado.ProductoId</li>
+                        <li><strong>Descripción:</strong> @ProductoSeleccionado.Descripcion</li>
+                        <li><strong>Existencia:</strong> @ProductoSeleccionado.Existencia</li>
+                    </ul>
+                    @if (!string.IsNullOrWhiteSpace(MensajeErrorModal))
+                    {
+                        <div class="alert alert-danger">@MensajeErrorModal</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => EsVisibleModalEliminar = false">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="EliminarProducto">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Productos> ListaProductos { get; set; } = new();
+    private bool EsVisibleModalEliminar = false;
+    private Productos? ProductoSeleccionado;
+    private string MensajeErrorModal = string.Empty;
+
+    private string Filtro { get; set; } = "Id";
+    private string ValorFiltro { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaProductos = await productosService.Listar(p => true);
+    }
+
+    private async Task Buscar()
+    {
+        var lista = await productosService.Listar(p => true);
+
+        if (!string.IsNullOrWhiteSpace(ValorFiltro))
+        {
+            if (Filtro == "Id" && int.TryParse(ValorFiltro, out int id))
+                lista = lista.Where(p => p.ProductoId == id).ToList();
+            else if (Filtro == "Descripcion")
+                lista = lista.Where(p => p.Descripcion != null &&
+                          p.Descripcion.Contains(ValorFiltro, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        ListaProductos = lista;
+    }
+
+    private void MostrarModalEliminar(Productos producto)
+    {
+        ProductoSeleccionado = producto;
+        MensajeErrorModal = string.Empty;
+        EsVisibleModalEliminar = true;
+    }
+
+    private async Task EliminarProducto()
+    {
+        if (ProductoSeleccionado != null)
+        {
+            var eliminado = await productosService.Eliminar(ProductoSeleccionado.ProductoId);
+            if (eliminado)
+            {
+                EsVisibleModalEliminar = false;
+                ListaProductos = await productosService.Listar(p => true);
+            }
+            else
+            {
+                MensajeErrorModal = "No se puede eliminar el producto porque tiene entradas asociadas.";
+            }
+        }
+    }
+}
